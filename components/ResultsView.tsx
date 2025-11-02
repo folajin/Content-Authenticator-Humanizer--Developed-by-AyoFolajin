@@ -86,14 +86,15 @@ const HumanizeResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
         </div>
       </div>
       <div>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold text-slate-300 flex items-center">
-            <span className="w-2.5 h-2.5 mr-3 rounded-full bg-cyan-400 flex-shrink-0"></span>
-            Humanized Text
-          </h3>
+        <h3 className="text-lg font-semibold text-slate-300 mb-3 flex items-center">
+          <span className="w-2.5 h-2.5 mr-3 rounded-full bg-cyan-400 flex-shrink-0"></span>
+          Humanized Text
+        </h3>
+        <div className="relative group bg-slate-800 p-4 rounded-lg h-96 overflow-y-auto border border-cyan-500/30 text-slate-200 whitespace-pre-wrap">
           <button
             onClick={handleCopy}
-            className="flex items-center text-sm bg-slate-700/80 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 font-semibold py-2 px-3 rounded-lg transition-all duration-200"
+            aria-label="Copy humanized text to clipboard"
+            className="absolute top-3 right-3 z-10 flex items-center text-sm bg-slate-900/70 backdrop-blur-sm border border-slate-700 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 font-semibold py-2 px-3 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
           >
             {copied ? (
               <>
@@ -105,8 +106,6 @@ const HumanizeResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
               </>
             )}
           </button>
-        </div>
-        <div className="bg-slate-800 p-4 rounded-lg h-96 overflow-y-auto border border-cyan-500/30 text-slate-200 whitespace-pre-wrap">
           {data.humanizedText}
         </div>
       </div>
