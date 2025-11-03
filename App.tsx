@@ -93,18 +93,24 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <header className="w-full max-w-5xl mx-auto flex items-center justify-center py-6">
-        <HeaderIcon className="w-10 h-10 mr-4 text-cyan-400" />
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100 tracking-tight text-center">
-          Content Authenticator & Humanizer
-          <span className="block text-xl sm:text-2xl font-normal text-slate-400 mt-1">AyoFolajin</span>
+      <header className="w-full max-w-5xl mx-auto flex items-center justify-center py-6 px-4">
+        <HeaderIcon className="w-20 h-20 sm:w-24 sm:h-24 mr-4 sm:mr-6 flex-shrink-0 text-cyan-400" />
+        <h1
+          className="text-2xl sm:text-4xl font-semibold text-slate-100 tracking-wider uppercase leading-none"
+          style={{ fontFamily: 'Impact, sans-serif' }}
+        >
+          Content Authenticator
+          <span className="block">& Humanizer</span>
         </h1>
       </header>
       <main className="w-full flex-grow flex flex-col items-center justify-center">
         {renderContent()}
       </main>
-      <footer className="w-full max-w-5xl mx-auto text-center py-4 mt-8 flex justify-between items-center">
-        <p className="text-sm text-slate-500">Powered by Google Gemini</p>
+      <footer className="w-full max-w-5xl mx-auto text-center py-4 mt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="text-sm text-slate-500 text-center sm:text-left">
+          <p>Powered by Google Gemini</p>
+          <p>Built by AyoFolajin</p>
+        </div>
         <button 
           onClick={() => setIsFeedbackModalOpen(true)}
           className="flex items-center text-sm text-slate-400 hover:text-cyan-400 transition-colors"

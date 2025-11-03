@@ -73,25 +73,31 @@ export const CheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 export const HeaderIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg 
-    {...props}
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-  >
-    <path d="m12 14 4-4"></path>
-    <path d="M3.34 19a10 10 0 1 1 17.32 0"></path>
-    <path d="m12 20 4-4"></path>
-    <path d="M12 4v16"></path>
-    <path d="M8 10s-1.79 2-4 2"></path>
-    <path d="m8 14 4 4"></path>
-    <path d="M16 10s1.79 2 4 2"></path>
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      {/* Shield Outline */}
+      <path 
+          d="M56 13.535C56 9.387 52.69 6 48.545 6H15.455C11.31 6 8 9.387 8 13.535V32.667C8 48.467 20.427 58 32 58C43.573 58 56 48.467 56 32.667V13.535Z" 
+          stroke="currentColor" // Will inherit color from className
+          strokeWidth="5"
+      />
+      {/* Person head, shoulder and checkmark solid fill area */}
+      <g>
+        <path 
+            d="M32 28C35.314 28 38 25.314 38 22C38 18.686 35.314 16 32 16C28.686 16 26 18.686 26 22C26 25.314 28.686 28 32 28Z" 
+            fill="#14B8A6" // teal-500
+        />
+        <path 
+            d="M42.667 38.667C42.667 33.144 37.856 29.333 32 29.333C26.144 29.333 21.333 33.144 21.333 38.667H42.667Z" 
+            fill="#14B8A6" // teal-500
+        />
+        <path 
+            d="M26.667 33.333L32 38.667L42.667 28" 
+            stroke="white" 
+            strokeWidth="4" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+        />
+      </g>
   </svg>
 );
 
@@ -137,7 +143,7 @@ export const DownloadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -156,7 +162,7 @@ export const PDFIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -165,9 +171,8 @@ export const PDFIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   >
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
     <polyline points="14 2 14 8 20 8"></polyline>
-    <path d="M9 15v-4H5.5a1.5 1.5 0 0 0 0 3H7"></path>
-    <path d="M12.5 15a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-3 0v1.5a1.5 1.5 0 0 0 1.5 1.5z"></path>
-    <path d="M18.5 15h-2.5a1 1 0 0 1-1-1v-2.5a1 1 0 0 1 1-1h2.5"></path>
+    <line x1="12" y1="18" x2="12" y2="12"></line>
+    <line x1="9" y1="12" x2="15" y2="12"></line>
   </svg>
 );
 
@@ -177,16 +182,18 @@ export const ShareIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-    <polyline points="16 6 12 2 8 6"></polyline>
-    <line x1="12" y1="2" x2="12" y2="15"></line>
+    <circle cx="18" cy="5" r="3"></circle>
+    <circle cx="6" cy="12" r="3"></circle>
+    <circle cx="18" cy="19" r="3"></circle>
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
   </svg>
 );
 
@@ -196,7 +203,7 @@ export const TwitterIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -207,14 +214,13 @@ export const TwitterIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-
 export const FacebookIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
     {...props}
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"
@@ -222,6 +228,25 @@ export const FacebookIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
     strokeLinejoin="round"
   >
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+  </svg>
+);
+
+export const ImageIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
   </svg>
 );
 

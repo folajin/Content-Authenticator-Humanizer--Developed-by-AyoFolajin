@@ -1,7 +1,9 @@
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
 import { AnalysisMode, AnalysisOptions, PlagiarismSensitivity, HumanizeStyle } from '../types';
 import { countWords } from '../utils/textUtils';
 import { UploadIcon, FileIcon } from './icons';
+import mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface UploadViewProps {
   onAnalyze: (text: string, mode: AnalysisMode, options: AnalysisOptions) => void;
@@ -20,39 +22,118 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
     plagiarismSensitivity: 'medium',
     humanizeStyle: 'default',
   });
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileLoadProgress, setFileLoadProgress] = useState(0);
+  const [fileLoadMessage, setFileLoadMessage] = useState('');
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Configure the PDF.js worker source. This is required for it to work.
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.4.168/build/pdf.worker.mjs`;
+  }, []);
 
   const handleTextChange = useCallback((newText: string) => {
-    // Character limit is primarily enforced by textarea's maxLength.
-    // This logic handles word count and truncation for pasted/loaded text.
-    const currentWordCount = countWords(newText);
+    let processedText = newText;
+    if (newText.length > MAX_CHARS) {
+        processedText = newText.substring(0, MAX_CHARS);
+    }
+    
+    const currentWordCount = countWords(processedText);
     if (currentWordCount <= MAX_WORDS) {
-      setText(newText);
+      setText(processedText);
       setWordCount(currentWordCount);
     } else {
-        const truncatedText = newText.split(/\s+/).slice(0, MAX_WORDS).join(' ');
+        const truncatedText = processedText.split(/\s+/).slice(0, MAX_WORDS).join(' ');
         setText(truncatedText);
         setWordCount(MAX_WORDS);
     }
   }, []);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        let fileContent = event.target?.result as string;
-        // Enforce character limit on file content
-        if (fileContent.length > MAX_CHARS) {
-            fileContent = fileContent.substring(0, MAX_CHARS);
+    if (!file) return;
+
+    // Reset state for new upload
+    setFileError(null);
+    setFileLoading(true);
+    setFileLoadMessage(`Reading ${file.name}...`);
+    setFileLoadProgress(0);
+    setText('');
+    setFileName(null);
+
+    const reader = new FileReader();
+    
+    try {
+        if (file.type === 'application/pdf') {
+            reader.onload = async (event) => {
+                try {
+                    const arrayBuffer = event.target?.result;
+                    if (!(arrayBuffer instanceof ArrayBuffer)) {
+                        throw new Error('Failed to read file as ArrayBuffer.');
+                    }
+                    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        setFileLoadMessage(`Processing page ${i} of ${pdf.numPages}...`);
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
+                        fullText += pageText + '\n';
+                        setFileLoadProgress(Math.round((i / pdf.numPages) * 100));
+                    }
+                    handleTextChange(fullText);
+                    setFileName(file.name);
+                } catch (err) {
+                    console.error("PDF processing error:", err);
+                    setFileError('Could not read PDF. The file may be corrupted or password-protected.');
+                } finally {
+                    setFileLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            reader.onload = async (event) => {
+                try {
+                    const arrayBuffer = event.target?.result;
+                     if (!(arrayBuffer instanceof ArrayBuffer)) {
+                        throw new Error('Failed to read file as ArrayBuffer.');
+                    }
+                    setFileLoadMessage(`Converting ${file.name}...`);
+                    setFileLoadProgress(50);
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    handleTextChange(result.value);
+                    setFileName(file.name);
+                    setFileLoadProgress(100);
+                } catch (err) {
+                    console.error("DOCX processing error:", err);
+                    setFileError('Could not read DOCX file. It may be corrupted.');
+                } finally {
+                    setFileLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+             reader.onload = (event) => {
+                const fileContent = event.target?.result as string;
+                handleTextChange(fileContent);
+                setFileName(file.name);
+                setFileLoading(false);
+            };
+            reader.readAsText(file);
+        } else {
+            setFileError(`Unsupported file type. Please upload a .txt, .md, .docx, or .pdf file.`);
+            setFileLoading(false);
         }
-        handleTextChange(fileContent);
-        setFileName(file.name);
-      };
-      reader.readAsText(file);
+    } catch (err) {
+        console.error("File reading error:", err);
+        setFileError('An unexpected error occurred while trying to read the file.');
+        setFileLoading(false);
     }
+    
     // Reset file input to allow re-uploading the same file
     e.target.value = '';
   };
+
 
   const handleOptionChange = (key: keyof AnalysisOptions, value: any) => {
     setOptions(prev => ({ ...prev, [key]: value }));
@@ -60,7 +141,6 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
 
   const isAnalyzeDisabled = text.trim().length === 0;
   
-  // More granular color logic for the word count indicator.
   const wordCountColor = (() => {
     if (wordCount >= MAX_WORDS) {
       return 'text-red-400';
@@ -71,7 +151,7 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
     return 'text-slate-400';
   })();
   
-  const charCountColor = text.length > MAX_CHARS * 0.9 ? 'text-red-400' : 'text-slate-400';
+  const charCountColor = text.length >= MAX_CHARS ? 'text-red-400' : 'text-slate-400';
 
   const renderOptions = () => {
     if (mode === AnalysisMode.PLAGIARISM) {
@@ -144,6 +224,12 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
             <span className="block sm:inline">{error}</span>
          </div>
       )}
+       {fileError && (
+         <div className="bg-yellow-900/50 border border-yellow-700 text-yellow-300 px-4 py-3 rounded-lg relative mb-6" role="alert">
+            <strong className="font-bold">File Error: </strong>
+            <span className="block sm:inline">{fileError}</span>
+         </div>
+      )}
       <div className="flex flex-col sm:flex-row items-center justify-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
         <button
           onClick={() => setMode(AnalysisMode.PLAGIARISM)}
@@ -178,6 +264,19 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
       </div>
 
       <div className="relative group">
+        {fileLoading && (
+            <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center z-20 rounded-lg p-4 transition-opacity duration-300">
+                <div className="w-full max-w-sm text-center">
+                    <p className="text-slate-300 font-semibold mb-3 animate-pulse">{fileLoadMessage}</p>
+                    <div className="w-full bg-slate-700 rounded-full h-2.5">
+                        <div 
+                            className="bg-cyan-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${fileLoadProgress}%` }}
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        )}
         <textarea
           value={text}
           onChange={(e) => {
@@ -185,32 +284,30 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
             setFileName(null);
           }}
           placeholder="Paste your text here..."
-          className="w-full h-64 p-4 pr-32 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all resize-none"
+          className="w-full h-64 p-4 pr-64 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all resize-none"
           maxLength={MAX_CHARS}
         />
-        <div className={`absolute bottom-4 right-5 text-sm font-medium transition-colors pointer-events-none ${wordCountColor}`}>
-            {wordCount.toLocaleString()} / {MAX_WORDS.toLocaleString()} words
+        <div className="absolute bottom-4 right-5 text-sm font-medium pointer-events-none flex items-center space-x-3 divide-x divide-slate-600">
+            <span className={`pl-3 transition-colors ${charCountColor}`}>{text.length.toLocaleString()} / {MAX_CHARS.toLocaleString()} chars</span>
+            <span className={`pl-3 transition-colors ${wordCountColor}`}>{wordCount.toLocaleString()} / {MAX_WORDS.toLocaleString()} words</span>
         </div>
         <div className="absolute inset-0 flex items-center justify-center bg-slate-800/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity duration-300 rounded-lg pointer-events-none">
             <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center text-slate-300 hover:text-cyan-400 transition-colors pointer-events-auto">
                 <UploadIcon className="w-12 h-12 mb-2" />
                 <span className="font-semibold">Upload a file</span>
-                <span className="text-sm text-slate-400">.txt, .md</span>
-                <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".txt,.md" />
+                <span className="text-sm text-slate-400">.txt, .md, .docx, .pdf</span>
+                <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".txt,.md,.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
             </label>
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-4 text-sm">
-        {fileName ? (
+      <div className="flex justify-start items-center mt-4 text-sm h-5">
+        {fileName && (
             <div className="flex items-center text-slate-400">
                 <FileIcon className="w-4 h-4 mr-2 flex-shrink-0" />
                 <span className="truncate">{fileName}</span>
             </div>
-        ) : <div />}
-        <div className="flex items-center space-x-4">
-            <span className={charCountColor}>{text.length.toLocaleString()} / {MAX_CHARS.toLocaleString()} characters</span>
-        </div>
+        )}
       </div>
 
       {renderOptions()}

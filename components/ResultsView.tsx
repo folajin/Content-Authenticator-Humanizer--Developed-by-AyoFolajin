@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AnalysisMode, ResultData } from '../types';
-import { CopyIcon, CheckIcon, GitHubIcon, DownloadIcon, PDFIcon, ExternalLinkIcon, ShareIcon, TwitterIcon, FacebookIcon } from './icons';
+import { CopyIcon, CheckIcon, GitHubIcon, DownloadIcon, PDFIcon, ExternalLinkIcon, ShareIcon, TwitterIcon, FacebookIcon, ImageIcon } from './icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import ShareImage from './ShareImage';
 
 interface ResultsViewProps {
   data: ResultData;
@@ -86,7 +87,7 @@ const PdfExportContent = React.forwardRef<HTMLDivElement, { data: ResultData }>(
       </div>
       {renderPdfContent()}
       <div className="mt-12 text-center text-xs text-gray-500 border-t pt-4">
-        <p>Powered by Content Authenticator & Humanizer | Developed by AyoFolajin</p>
+        <p>Powered by Content Authenticator & Humanizer | Built by AyoFolajin</p>
       </div>
     </div>
   );
@@ -103,6 +104,17 @@ const PlagiarismResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
       : results.overallScore > 20
       ? 'text-yellow-500'
       : 'text-green-500';
+      
+  const sourceMap = new Map<string, { source: string; maxScore: number }>();
+  results.segments.forEach(segment => {
+    if (segment.isPlagiarized && segment.source && segment.score) {
+      const existing = sourceMap.get(segment.source);
+      if (!existing || segment.score > existing.maxScore) {
+        sourceMap.set(segment.source, { source: segment.source, maxScore: segment.score });
+      }
+    }
+  });
+  const uniqueSources = Array.from(sourceMap.values()).sort((a, b) => b.maxScore - a.maxScore);
 
   return (
     <div className="w-full">
@@ -142,6 +154,37 @@ const PlagiarismResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
           )}
         </p>
       </div>
+
+      {uniqueSources.length > 0 && (
+        <div className="mt-6 bg-slate-900 p-6 rounded-lg border border-slate-700">
+          <h4 className="font-bold text-slate-200 mb-4">Detected Sources</h4>
+          <ul className="space-y-3">
+            {uniqueSources.map(({ source, maxScore }, index) => {
+              const scorePercent = Math.round(maxScore * 100);
+              const scoreColor = scorePercent > 75 ? 'bg-red-500/20 text-red-300' : scorePercent > 50 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-green-500/20 text-green-300';
+              return (
+                <li key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3 bg-slate-800/50 rounded-md">
+                  <a
+                    href={source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-cyan-400 hover:underline flex-1 min-w-0"
+                  >
+                    <span className="truncate">{source}</span>
+                    <ExternalLinkIcon className="w-4 h-4 ml-2 shrink-0" />
+                  </a>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <span className="text-xs text-slate-400">Confidence:</span>
+                    <span className={`text-sm font-semibold px-2.5 py-0.5 rounded-full ${scoreColor}`}>
+                      {scorePercent}%
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
@@ -283,7 +326,9 @@ const HumanizeResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
 
 const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
   const pdfExportRef = useRef<HTMLDivElement>(null);
+  const shareImageRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSharePopoverOpen, setIsSharePopoverOpen] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const sharePopoverRef = useRef<HTMLDivElement>(null);
@@ -356,6 +401,42 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
         setIsSharePopoverOpen(false);
     }, 2000);
   }, [data]);
+  
+  const handleDownloadShareImage = useCallback(async () => {
+    if (!shareImageRef.current || isGeneratingImage) return;
+
+    setIsGeneratingImage(true);
+    try {
+        const canvas = await html2canvas(shareImageRef.current, {
+            scale: 1,
+            backgroundColor: null,
+            useCORS: true,
+        });
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        
+        let fileName = 'analysis-card.png';
+        if (data.mode === AnalysisMode.PLAGIARISM) {
+            fileName = 'plagiarism-card.png';
+        } else if (data.mode === AnalysisMode.AI_DETECTION) {
+            fileName = 'ai-detection-card.png';
+        } else if (data.mode === AnalysisMode.HUMANIZE) {
+            fileName = 'humanization-card.png';
+        }
+        
+        link.download = fileName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error("Failed to generate share image:", error);
+    } finally {
+        setIsGeneratingImage(false);
+        setIsSharePopoverOpen(false);
+    }
+  }, [data, isGeneratingImage]);
 
   const handleDownload = useCallback(() => {
     let reportContent = '';
@@ -508,7 +589,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             {isSharePopoverOpen && (
               <div
                 ref={sharePopoverRef}
-                className="absolute right-0 bottom-full mb-2 w-56 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-20 animate-fade-in-up"
+                className="absolute right-0 bottom-full mb-2 w-60 bg-slate-700 border border-slate-600 rounded-lg shadow-xl z-20 animate-fade-in-up"
               >
                 <div className="p-2">
                   <p className="px-2 py-1 text-xs font-semibold text-slate-400">SHARE ON</p>
@@ -517,6 +598,10 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
                   </button>
                   <button onClick={() => handleShare('facebook')} className="flex items-center w-full text-left p-2 rounded-md text-slate-200 hover:bg-slate-600 transition-colors">
                     <FacebookIcon className="w-5 h-5 mr-3" /> Share on Facebook
+                  </button>
+                  <div className="h-px bg-slate-600 my-1"></div>
+                  <button onClick={handleDownloadShareImage} disabled={isGeneratingImage} className="flex items-center w-full text-left p-2 rounded-md text-slate-200 hover:bg-slate-600 transition-colors disabled:opacity-50">
+                    <ImageIcon className="w-5 h-5 mr-3" /> {isGeneratingImage ? 'Generating...' : 'Download Share Image'}
                   </button>
                   <div className="h-px bg-slate-600 my-1"></div>
                   <button onClick={handleCopySummary} className="flex items-center w-full text-left p-2 rounded-md text-slate-200 hover:bg-slate-600 transition-colors">
@@ -572,9 +657,12 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
       <div>
         {renderResults()}
       </div>
-      {/* Hidden component for PDF generation */}
-      <div className="absolute -left-[9999px] top-auto w-[800px]">
-        <PdfExportContent data={data} ref={pdfExportRef} />
+      {/* Hidden components for export */}
+      <div className="absolute -left-[9999px] top-auto">
+        <div className="w-[800px]">
+          <PdfExportContent data={data} ref={pdfExportRef} />
+        </div>
+        <ShareImage data={data} ref={shareImageRef} />
       </div>
       <style>{`
         @keyframes fade-in-up {
