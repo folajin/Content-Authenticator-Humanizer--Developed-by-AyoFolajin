@@ -1,6 +1,15 @@
 export enum AnalysisMode {
   PLAGIARISM = 'PLAGIARISM',
   HUMANIZE = 'HUMANIZE',
+  AI_DETECTION = 'AI_DETECTION',
+}
+
+export type PlagiarismSensitivity = 'medium' | 'high' | 'strict';
+export type HumanizeStyle = 'default' | 'casual' | 'formal' | 'simple' | 'creative' | 'technical' | 'enthusiastic';
+
+export interface AnalysisOptions {
+  plagiarismSensitivity?: PlagiarismSensitivity;
+  humanizeStyle?: HumanizeStyle;
 }
 
 export interface PlagiarismFinding {
@@ -21,10 +30,29 @@ export interface PlagiarismResult {
   segments: PlagiarismSegment[];
 }
 
+// New types for AI Detection
+export interface AiDetectionFinding {
+  text_segment: string;
+  is_ai_generated: boolean;
+  confidence_score: number;
+}
+
+export interface AiDetectionSegment {
+  text: string;
+  isAi: boolean;
+  score?: number;
+}
+
+export interface AiDetectionResult {
+  overallScore: number;
+  segments: AiDetectionSegment[];
+}
 
 export interface ResultData {
   originalText: string;
   plagiarismResults?: PlagiarismResult;
   humanizedText?: string;
+  aiDetectionResults?: AiDetectionResult;
   mode: AnalysisMode;
+  options?: AnalysisOptions;
 }

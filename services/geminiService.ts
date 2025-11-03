@@ -1,7 +1,7 @@
 // FIX: Replaced deprecated `GenerateContentRequest` with `GenerateContentParameters` and imported `Type` for schema definition.
 import { GoogleGenAI, GenerateContentParameters, Type } from "@google/genai";
 import { chunkText } from '../utils/textUtils';
-import { PlagiarismFinding, PlagiarismResult, PlagiarismSegment } from "../types";
+import { PlagiarismFinding, PlagiarismResult, PlagiarismSegment, AiDetectionFinding, AiDetectionResult, AiDetectionSegment, AnalysisOptions } from "../types";
 
 const CHUNK_SIZE_WORDS = 2000;
 const MAX_RETRIES = 3;
@@ -10,7 +10,7 @@ const INITIAL_DELAY_MS = 1000;
 /**
  * A custom error class for messages intended to be displayed directly to the user.
  */
-class UserFacingError extends Error {
+export class UserFacingError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'UserFacingError';
@@ -39,6 +39,28 @@ const plagiarismResponseSchema = {
         },
       },
       required: ["plagiarized_text", "source_url", "confidence_score"],
+    },
+};
+
+const aiDetectionResponseSchema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        text_segment: {
+          type: Type.STRING,
+          description: "The exact text segment being evaluated.",
+        },
+        is_ai_generated: {
+            type: Type.BOOLEAN,
+            description: "True if the text segment is likely AI-generated, false otherwise."
+        },
+        confidence_score: {
+          type: Type.NUMBER,
+          description: "A score from 0.0 to 1.0 indicating the confidence that the segment is AI-generated.",
+        },
+      },
+      required: ["text_segment", "is_ai_generated", "confidence_score"],
     },
 };
 
@@ -164,14 +186,72 @@ const processPlagiarismResults = (originalText: string, findings: PlagiarismFind
     };
 };
 
+const processAiDetectionResults = (originalText: string, findings: AiDetectionFinding[]): AiDetectionResult => {
+    const aiFindings = findings.filter(f => f.is_ai_generated);
+    if (aiFindings.length === 0) {
+        return {
+            overallScore: 0,
+            segments: [{ text: originalText, isAi: false }],
+        };
+    }
+
+    let segments: AiDetectionSegment[] = [{ text: originalText, isAi: false }];
+    let totalAiChars = 0;
+
+    aiFindings.forEach(finding => {
+        const newSegments: AiDetectionSegment[] = [];
+        segments.forEach(segment => {
+            if (segment.isAi) {
+                newSegments.push(segment);
+                return;
+            }
+            
+            const parts = segment.text.split(finding.text_segment);
+             if (parts.length > 1) {
+              totalAiChars += finding.text_segment.length * (parts.length -1)
+            }
+            
+            for (let i = 0; i < parts.length; i++) {
+                if (parts[i]) {
+                    newSegments.push({ text: parts[i], isAi: false });
+                }
+                if (i < parts.length - 1) {
+                    newSegments.push({
+                        text: finding.text_segment,
+                        isAi: true,
+                        score: finding.confidence_score,
+                    });
+                }
+            }
+        });
+        segments = newSegments;
+    });
+
+    const overallScore = originalText.length > 0 ? (totalAiChars / originalText.length) * 100 : 0;
+
+    return {
+        overallScore: Math.min(100, Math.round(overallScore)),
+        segments,
+    };
+};
+
 
 export const checkPlagiarism = async (
     text: string, 
-    onProgress: (progress: number, message: string) => void
+    onProgress: (progress: number, message: string) => void,
+    options: AnalysisOptions
 ): Promise<PlagiarismResult> => {
     const chunks = chunkText(text, CHUNK_SIZE_WORDS);
     const totalChunks = chunks.length;
     let allFindings: PlagiarismFinding[] = [];
+
+    const sensitivity = options.plagiarismSensitivity || 'medium';
+    let promptIntro = "Analyze the following text for plagiarism against public web sources. Identify any sections that are not original.";
+    if (sensitivity === 'high') {
+        promptIntro = "Analyze the following text for plagiarism against public web sources. Perform a thorough analysis and identify sections that show strong similarity, even if not directly copied.";
+    } else if (sensitivity === 'strict') {
+        promptIntro = "Perform a very strict plagiarism analysis on the following text against public web sources. Identify even remotely similar phrasing or sentence structures that might be considered unoriginal.";
+    }
 
     for (let i = 0; i < totalChunks; i++) {
         const chunk = chunks[i];
@@ -183,7 +263,7 @@ export const checkPlagiarism = async (
             // FIX: Replaced deprecated `GenerateContentRequest` with `GenerateContentParameters`.
             const request: GenerateContentParameters = {
                 model: "gemini-2.5-flash",
-                contents: `Analyze the following text for plagiarism against public web sources. Identify any sections that are not original. Text to analyze: "${chunk}"`,
+                contents: `${promptIntro} Text to analyze: "${chunk}"`,
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: plagiarismResponseSchema,
@@ -218,13 +298,91 @@ export const checkPlagiarism = async (
     return processPlagiarismResults(text, allFindings);
 };
 
-export const humanizeText = async (
+export const checkAiContent = async (
     text: string, 
     onProgress: (progress: number, message: string) => void
+): Promise<AiDetectionResult> => {
+    const chunks = chunkText(text, CHUNK_SIZE_WORDS);
+    const totalChunks = chunks.length;
+    let allFindings: AiDetectionFinding[] = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+        const chunk = chunks[i];
+        const progress = ((i + 1) / totalChunks) * 100;
+        const baseMessage = `Analyzing chunk ${i + 1} of ${totalChunks} for AI content...`;
+        onProgress(progress, baseMessage);
+
+        try {
+            const request: GenerateContentParameters = {
+                model: "gemini-2.5-flash",
+                contents: `Analyze the following text to determine the likelihood that it was generated by an AI. Break the text down into segments and for each, determine if it is AI-generated and provide a confidence score. Focus on identifying unnatural phrasing, excessive complexity, or other AI-like patterns. Text to analyze: "${chunk}"`,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: aiDetectionResponseSchema,
+                }
+            };
+
+            const onRetry = (attempt: number) => {
+                onProgress(progress, `${baseMessage} (Network issue, retrying attempt ${attempt + 1}/${MAX_RETRIES})`);
+            };
+
+            const response = await generateContentWithRetry(request, onRetry);
+
+            const jsonString = response.text.trim();
+            if (jsonString) {
+                try {
+                    const findings: AiDetectionFinding[] = JSON.parse(jsonString);
+                    allFindings = [...allFindings, ...findings];
+                } catch (parseError) {
+                    console.error(`Error parsing JSON for AI check on chunk ${i + 1}:`, jsonString);
+                    throw new UserFacingError(`The AI returned an invalid response format. This can sometimes happen with complex text. Please try your request again.`);
+                }
+            }
+        } catch (error) {
+            if (error instanceof UserFacingError) {
+                throw error;
+            }
+            handleApiError(error);
+        }
+    }
+    
+    onProgress(100, 'Finalizing results...');
+    return processAiDetectionResults(text, allFindings);
+};
+
+export const humanizeText = async (
+    text: string, 
+    onProgress: (progress: number, message: string) => void,
+    options: AnalysisOptions
 ): Promise<string> => {
     const chunks = chunkText(text, CHUNK_SIZE_WORDS);
     const totalChunks = chunks.length;
     const humanizedChunks: string[] = [];
+    
+    const style = options.humanizeStyle || 'default';
+    let promptCore = "Rewrite the following text to sound more natural, human, and engaging. Avoid robotic phrasing and complex sentence structures, but preserve the core meaning and information.";
+    
+    switch (style) {
+        case 'casual':
+            promptCore = "Rewrite the following text to sound more casual and conversational. Use simpler language and a friendly tone, while keeping the original meaning intact.";
+            break;
+        case 'formal':
+            promptCore = "Rewrite the following text to adopt a more professional and formal tone. Use precise language, structured sentences, and an authoritative voice, while preserving the core information.";
+            break;
+        case 'simple':
+            promptCore = "Rewrite the following text to improve readability. Simplify complex sentences, use clearer vocabulary, and shorten paragraphs where appropriate. The goal is to make the content easy for anyone to understand.";
+            break;
+        case 'creative':
+            promptCore = "Rewrite the following text to be more creative and expressive. Use vivid language, metaphors, or storytelling elements where appropriate, while preserving the core meaning.";
+            break;
+        case 'technical':
+            promptCore = "Rewrite the following text with a focus on technical accuracy and clarity. Use precise, unambiguous language suitable for a knowledgeable audience. Maintain a formal and objective tone, ensuring the original technical information is preserved and well-structured.";
+            break;
+        case 'enthusiastic':
+            promptCore = "Rewrite the following text with an enthusiastic and energetic tone. Use positive and vibrant language, exclamation points where appropriate, while preserving the core meaning.";
+            break;
+    }
+
 
     for (let i = 0; i < totalChunks; i++) {
         const chunk = chunks[i];
@@ -236,7 +394,7 @@ export const humanizeText = async (
             // FIX: Replaced deprecated `GenerateContentRequest` with `GenerateContentParameters`.
             const request: GenerateContentParameters = {
                 model: 'gemini-2.5-flash',
-                contents: `Rewrite the following text to sound more natural, human, and engaging. Avoid robotic phrasing and complex sentence structures, but preserve the core meaning and information. Respond only with the rewritten text. Here is the text to humanize: "${chunk}"`,
+                contents: `${promptCore} Respond only with the rewritten text. Here is the text to humanize: "${chunk}"`,
             };
             
             const onRetry = (attempt: number) => {
