@@ -4,7 +4,7 @@ import UploadView from './components/UploadView';
 import ResultsView from './components/ResultsView';
 import Loader from './components/Loader';
 import FeedbackModal from './components/FeedbackModal';
-import { checkPlagiarism, humanizeText, checkAiContent, UserFacingError } from './services/geminiService';
+import { checkPlagiarism, humanizeText, checkAiContent, summarizeText, UserFacingError } from './services/geminiService';
 import { HeaderIcon, FeedbackIcon } from './components/icons';
 
 type View = 'upload' | 'loading' | 'results';
@@ -45,6 +45,15 @@ const App: React.FC = () => {
             aiDetectionResults,
             mode,
             options,
+        });
+      } else if (mode === AnalysisMode.SUMMARIZE) {
+        setLoadingMessage('Starting text summarization...');
+        const summarizedText = await summarizeText(text, onProgress, options);
+        setResultData({
+          originalText: text,
+          summarizedText,
+          mode,
+          options,
         });
       } else {
         setLoadingMessage('Starting text humanization...');
@@ -94,14 +103,15 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
       <header className="w-full max-w-5xl mx-auto flex items-center justify-center py-6 px-4">
-        <HeaderIcon className="w-20 h-20 sm:w-24 sm:h-24 mr-4 sm:mr-6 flex-shrink-0 text-cyan-400" />
-        <h1
-          className="text-2xl sm:text-4xl font-semibold text-slate-100 tracking-wider uppercase leading-none"
-          style={{ fontFamily: 'Impact, sans-serif' }}
-        >
-          Content Authenticator
-          <span className="block">& Humanizer</span>
-        </h1>
+        <HeaderIcon className="w-20 h-20 sm:w-24 sm:h-24 mr-4 sm:mr-6 flex-shrink-0" />
+        <div className="text-left">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-100 tracking-tighter">
+            HumanizeX
+          </h1>
+          <p className="mt-1 text-md sm:text-lg text-slate-400">
+            Content Authenticator & Humanizer
+          </p>
+        </div>
       </header>
       <main className="w-full flex-grow flex flex-col items-center justify-center">
         {renderContent()}

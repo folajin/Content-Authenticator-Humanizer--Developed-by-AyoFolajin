@@ -2,14 +2,17 @@ export enum AnalysisMode {
   PLAGIARISM = 'PLAGIARISM',
   HUMANIZE = 'HUMANIZE',
   AI_DETECTION = 'AI_DETECTION',
+  SUMMARIZE = 'SUMMARIZE',
 }
 
 export type PlagiarismSensitivity = 'medium' | 'high' | 'strict';
 export type HumanizeStyle = 'default' | 'casual' | 'formal' | 'simple' | 'creative' | 'technical' | 'enthusiastic';
+export type SummaryLength = 'short' | 'medium' | 'long';
 
 export interface AnalysisOptions {
   plagiarismSensitivity?: PlagiarismSensitivity;
   humanizeStyle?: HumanizeStyle;
+  summaryLength?: SummaryLength;
 }
 
 export interface PlagiarismFinding {
@@ -53,6 +56,7 @@ export interface ResultData {
   plagiarismResults?: PlagiarismResult;
   humanizedText?: string;
   aiDetectionResults?: AiDetectionResult;
+  summarizedText?: string;
   mode: AnalysisMode;
   options?: AnalysisOptions;
 }

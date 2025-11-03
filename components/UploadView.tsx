@@ -1,5 +1,5 @@
 import React, { useState, useCallback, ChangeEvent, useEffect } from 'react';
-import { AnalysisMode, AnalysisOptions, PlagiarismSensitivity, HumanizeStyle } from '../types';
+import { AnalysisMode, AnalysisOptions, PlagiarismSensitivity, HumanizeStyle, SummaryLength } from '../types';
 import { countWords } from '../utils/textUtils';
 import { UploadIcon, FileIcon } from './icons';
 import mammoth from 'mammoth';
@@ -21,6 +21,7 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
   const [options, setOptions] = useState<AnalysisOptions>({
     plagiarismSensitivity: 'medium',
     humanizeStyle: 'default',
+    summaryLength: 'medium',
   });
   const [fileLoading, setFileLoading] = useState(false);
   const [fileLoadProgress, setFileLoadProgress] = useState(0);
@@ -182,6 +183,34 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
       );
     }
 
+    if (mode === AnalysisMode.SUMMARIZE) {
+      const lengths: { value: SummaryLength; label: string }[] = [
+        { value: 'short', label: 'Short' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'long', label: 'Long' },
+      ];
+      return (
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-slate-300 mb-2">Summary Length</label>
+          <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+            {lengths.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => handleOptionChange('summaryLength', value)}
+                className={`flex-1 text-center text-sm font-semibold py-2 px-3 rounded-md transition-colors duration-200 ${
+                  options.summaryLength === value
+                    ? 'bg-green-600 text-white shadow'
+                    : 'text-slate-400 hover:bg-slate-700/50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (mode === AnalysisMode.HUMANIZE) {
        const styles: { value: HumanizeStyle; label: string }[] = [
         { value: 'default', label: 'Default' },
@@ -230,20 +259,20 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
             <span className="block sm:inline">{fileError}</span>
          </div>
       )}
-      <div className="flex flex-col sm:flex-row items-center justify-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 items-center justify-center mb-6 gap-2 sm:gap-4">
         <button
           onClick={() => setMode(AnalysisMode.PLAGIARISM)}
-          className={`w-full sm:w-auto text-lg font-semibold py-3 px-6 rounded-lg transition-all duration-200 ${
+          className={`text-base font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
             mode === AnalysisMode.PLAGIARISM
               ? 'bg-cyan-500 text-slate-900 shadow-cyan-500/30 shadow-lg'
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
-          Plagiarism Check
+          Plagiarism
         </button>
         <button
           onClick={() => setMode(AnalysisMode.AI_DETECTION)}
-          className={`w-full sm:w-auto text-lg font-semibold py-3 px-6 rounded-lg transition-all duration-200 ${
+          className={`text-base font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
             mode === AnalysisMode.AI_DETECTION
               ? 'bg-amber-500 text-slate-900 shadow-amber-500/30 shadow-lg'
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -252,14 +281,24 @@ const UploadView: React.FC<UploadViewProps> = ({ onAnalyze, error }) => {
           AI Check
         </button>
         <button
+          onClick={() => setMode(AnalysisMode.SUMMARIZE)}
+          className={`text-base font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
+            mode === AnalysisMode.SUMMARIZE
+              ? 'bg-green-500 text-slate-900 shadow-green-500/30 shadow-lg'
+              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+          }`}
+        >
+          Summarize
+        </button>
+        <button
           onClick={() => setMode(AnalysisMode.HUMANIZE)}
-          className={`w-full sm:w-auto text-lg font-semibold py-3 px-6 rounded-lg transition-all duration-200 ${
+          className={`text-base font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
             mode === AnalysisMode.HUMANIZE
               ? 'bg-purple-500 text-slate-900 shadow-purple-500/30 shadow-lg'
               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
-          Humanize Text
+          Humanize
         </button>
       </div>
 

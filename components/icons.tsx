@@ -73,33 +73,43 @@ export const CheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 export const HeaderIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      {/* Shield Outline */}
-      <path 
-          d="M56 13.535C56 9.387 52.69 6 48.545 6H15.455C11.31 6 8 9.387 8 13.535V32.667C8 48.467 20.427 58 32 58C43.573 58 56 48.467 56 32.667V13.535Z" 
-          stroke="currentColor" // Will inherit color from className
-          strokeWidth="5"
-      />
-      {/* Person head, shoulder and checkmark solid fill area */}
-      <g>
-        <path 
-            d="M32 28C35.314 28 38 25.314 38 22C38 18.686 35.314 16 32 16C28.686 16 26 18.686 26 22C26 25.314 28.686 28 32 28Z" 
-            fill="#14B8A6" // teal-500
-        />
-        <path 
-            d="M42.667 38.667C42.667 33.144 37.856 29.333 32 29.333C26.144 29.333 21.333 33.144 21.333 38.667H42.667Z" 
-            fill="#14B8A6" // teal-500
-        />
-        <path 
-            d="M26.667 33.333L32 38.667L42.667 28" 
-            stroke="white" 
-            strokeWidth="4" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-        />
-      </g>
+  <svg viewBox="0 0 250 250" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <defs>
+      <linearGradient id="logo-main-gradient" x1="125" y1="0" x2="125" y2="250" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FFD68A" />
+        <stop offset="1" stopColor="#E67E22" />
+      </linearGradient>
+    </defs>
+    
+    {/* Shackle */}
+    <path 
+      d="M187.5 90 V 65 C 187.5 33.2 159.3 5 125 5 C 90.7 5 62.5 33.2 62.5 65 V 90" 
+      stroke="url(#logo-main-gradient)" 
+      strokeWidth="30" 
+      strokeLinecap="round"
+    />
+    
+    {/* Body (Padlock + Head shape) */}
+    <path 
+      d="M232.47,159.72c6.26-6.26,8.71-15.1,7.52-23.23c-3.13-21.2-19.16-37.81-38.38-37.81H48.39 c-13.63,0-25.75,8.8-27.18,22.25c-1.42,13.43,5.18,26.47,15.6,34.93c12.35,9.6,27.11,15.39,42.54,17.47 c17.9,2.37,36.96,2.16,55.19-0.56c13.71-2.05,26.54-6.83,36.8-14.07 C224.38,168.12,229.43,164.08,232.47,159.72z"
+      fill="url(#logo-main-gradient)"
+    />
+    
+    {/* Inner Head cutout effect */}
+    <path 
+      d="M192.83,154.21c2.81-2.81,4.12-6.52,3.7-9.84c-1.12-8.52-7.51-15.42-14.88-15.42h-35.33c0,6.23,3.06,12.28,8.23,16.89 c5.18,4.59,11.2,7.43,17.58,7.91c7.76,0.61,15.54-1.1,21.57-5.81v15.08Z"
+      fill="#D35400"
+      opacity="0.7"
+    />
+    
+    {/* Keyhole */}
+    <path 
+      d="M125 125.5 a 12 12 0 1 0 0 -24 a 12 12 0 1 0 0 24z M 117 125 H 133 V 145 H 117 V 125 z"
+      fill="#582900"
+    />
   </svg>
 );
+
 
 export const GitHubIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
@@ -173,6 +183,27 @@ export const PDFIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <polyline points="14 2 14 8 20 8"></polyline>
     <line x1="12" y1="18" x2="12" y2="12"></line>
     <line x1="9" y1="12" x2="15" y2="12"></line>
+  </svg>
+);
+
+export const DocxIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    <polyline points="14 2 14 8 20 8"></polyline>
+    <line x1="16" y1="13" x2="8" y2="13"></line>
+    <line x1="16" y1="17" x2="8" y2="17"></line>
+    <line x1="10" y1="9" x2="8" y2="9"></line>
   </svg>
 );
 
@@ -256,7 +287,7 @@ export const FeedbackIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24 24"
+    viewBox="0 0 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="2"

@@ -7,23 +7,34 @@ interface ShareImageProps {
 
 // A self-contained SVG for the Header Icon to ensure it renders correctly in html2canvas
 const HeaderIconSVG = () => (
-    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" width="80" height="80">
-      <path 
-          d="M56 13.535C56 9.387 52.69 6 48.545 6H15.455C11.31 6 8 9.387 8 13.535V32.667C8 48.467 20.427 58 32 58C43.573 58 56 48.467 56 32.667V13.535Z" 
-          stroke="#06B6D4" // cyan-500
-          strokeWidth="5"
-      />
-      <g>
-        <path d="M32 28C35.314 28 38 25.314 38 22C38 18.686 35.314 16 32 16C28.686 16 26 18.686 26 22C26 25.314 28.686 28 32 28Z" fill="#14B8A6"/>
-        <path d="M42.667 38.667C42.667 33.144 37.856 29.333 32 29.333C26.144 29.333 21.333 33.144 21.333 38.667H42.667Z" fill="#14B8A6"/>
-        <path d="M26.667 33.333L32 38.667L42.667 28" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-      </g>
-  </svg>
+    <svg viewBox="0 0 250 250" fill="none" xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+        <defs>
+            <linearGradient id="logo-main-gradient-share" x1="125" y1="0" x2="125" y2="250" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#FFD68A" />
+                <stop offset="1" stopColor="#E67E22" />
+            </linearGradient>
+        </defs>
+        <path d="M187.5 90 V 65 C 187.5 33.2 159.3 5 125 5 C 90.7 5 62.5 33.2 62.5 65 V 90" stroke="url(#logo-main-gradient-share)" strokeWidth="30" strokeLinecap="round" />
+        <path d="M232.47,159.72c6.26-6.26,8.71-15.1,7.52-23.23c-3.13-21.2-19.16-37.81-38.38-37.81H48.39 c-13.63,0-25.75,8.8-27.18,22.25c-1.42,13.43,5.18,26.47,15.6,34.93c12.35,9.6,27.11,15.39,42.54,17.47 c17.9,2.37,36.96,2.16,55.19-0.56c13.71-2.05,26.54-6.83,36.8-14.07 C224.38,168.12,229.43,164.08,232.47,159.72z" fill="url(#logo-main-gradient-share)" />
+        <path d="M192.83,154.21c2.81-2.81,4.12-6.52,3.7-9.84c-1.12-8.52-7.51-15.42-14.88-15.42h-35.33c0,6.23,3.06,12.28,8.23,16.89 c5.18,4.59,11.2,7.43,17.58,7.91c7.76,0.61,15.54-1.1,21.57-5.81v15.08Z" fill="#D35400" opacity="0.7" />
+        <path d="M125 125.5 a 12 12 0 1 0 0 -24 a 12 12 0 1 0 0 24z M 117 125 H 133 V 145 H 117 V 125 z" fill="#582900" />
+    </svg>
 );
 
 const CheckmarkSVG = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+);
+
+const SummarizeIconSVG = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M12 4h9"></path>
+        <path d="M12 12h9"></path>
+        <path d="M5 17l-3-3 3-3"></path>
+        <path d="M9 7l-3 3 3 3"></path>
+        <path d="M2 14V10"></path>
     </svg>
 );
 
@@ -46,6 +57,20 @@ const ShareImage = React.forwardRef<HTMLDivElement, ShareImageProps>(({ data }, 
           <>
             <div style={{ fontSize: '160px', fontWeight: 700, color: aiColor, lineHeight: 1 }}>{aiScore}%</div>
             <div style={{ fontSize: '48px', color: '#CBD5E1', marginTop: '20px' }}>AI Content Likelihood</div>
+          </>
+        );
+      case AnalysisMode.SUMMARIZE:
+        return (
+          <>
+             <div style={{
+                width: '180px', height: '180px',
+                backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+             }}>
+                <SummarizeIconSVG />
+             </div>
+            <div style={{ fontSize: '48px', color: '#CBD5E1', marginTop: '20px' }}>Text Successfully Summarized</div>
           </>
         );
       case AnalysisMode.HUMANIZE:
@@ -85,9 +110,13 @@ const ShareImage = React.forwardRef<HTMLDivElement, ShareImageProps>(({ data }, 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <HeaderIconSVG />
-        <div style={{ fontFamily: 'Impact, sans-serif', marginLeft: '24px', textTransform: 'uppercase', fontSize: '36px', fontWeight: 600, letterSpacing: '0.05em', lineHeight: '1.1' }}>
-          Content Authenticator
-          <span style={{ display: 'block' }}>& Humanizer</span>
+        <div style={{ marginLeft: '24px', lineHeight: '1.2' }}>
+            <div style={{ fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'", fontSize: '48px', fontWeight: 800, color: '#E2E8F0', letterSpacing: '-0.05em' }}>
+                HumanizeX
+            </div>
+            <div style={{ fontSize: '24px', color: '#94A3B8', marginTop: '4px' }}>
+                Content Authenticator & Humanizer
+            </div>
         </div>
       </div>
 

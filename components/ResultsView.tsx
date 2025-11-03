@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AnalysisMode, ResultData } from '../types';
-import { CopyIcon, CheckIcon, GitHubIcon, DownloadIcon, PDFIcon, ExternalLinkIcon, ShareIcon, TwitterIcon, FacebookIcon, ImageIcon } from './icons';
+import { CopyIcon, CheckIcon, GitHubIcon, DownloadIcon, PDFIcon, DocxIcon, ExternalLinkIcon, ShareIcon, TwitterIcon, FacebookIcon, ImageIcon } from './icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Document, Packer, Paragraph } from 'docx';
 import ShareImage from './ShareImage';
 
 interface ResultsViewProps {
@@ -56,6 +57,21 @@ const PdfExportContent = React.forwardRef<HTMLDivElement, { data: ResultData }>(
                 )
               )}
             </p>
+          </div>
+        );
+
+      case AnalysisMode.SUMMARIZE:
+        return (
+          <div>
+            <h2 className="text-3xl font-bold mb-6">Text Summarization Report</h2>
+            <div className="mb-8">
+              <h3 className="text-xl font-bold border-b pb-2 mb-4">Original Text</h3>
+              <p className="text-base leading-relaxed whitespace-pre-wrap">{data.originalText}</p>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold border-b pb-2 mb-4">Summarized Text</h3>
+              <p className="text-base leading-relaxed whitespace-pre-wrap">{data.summarizedText}</p>
+            </div>
           </div>
         );
 
@@ -323,11 +339,62 @@ const HumanizeResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
   );
 };
 
+const SummarizeResultDisplay: React.FC<{ data: ResultData }> = ({ data }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (data.summarizedText) {
+      navigator.clipboard.writeText(data.summarizedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="w-full grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-300 mb-3 flex items-center">
+          <span className="w-2.5 h-2.5 mr-3 rounded-full bg-slate-500 flex-shrink-0"></span>
+          Original Text
+        </h3>
+        <div className="bg-slate-900 p-4 rounded-lg h-96 overflow-y-auto border border-slate-700 text-slate-400 whitespace-pre-wrap">
+          {data.originalText}
+        </div>
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-slate-300 mb-3 flex items-center">
+          <span className="w-2.5 h-2.5 mr-3 rounded-full bg-green-400 flex-shrink-0"></span>
+          Summarized Text
+        </h3>
+        <div className="relative group bg-slate-800 p-4 rounded-lg h-96 overflow-y-auto border border-green-500/30 text-slate-200 whitespace-pre-wrap">
+          <button
+            onClick={handleCopy}
+            aria-label="Copy summarized text to clipboard"
+            className="absolute top-3 right-3 z-10 flex items-center text-sm bg-slate-900/70 backdrop-blur-sm border border-slate-700 hover:bg-green-500/20 text-slate-300 hover:text-green-300 font-semibold py-2 px-3 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+          >
+            {copied ? (
+              <>
+                <CheckIcon className="w-4 h-4 mr-2 text-green-400" /> Copied!
+              </>
+            ) : (
+              <>
+                <CopyIcon className="w-4 h-4 mr-2" /> Copy
+              </>
+            )}
+          </button>
+          {data.summarizedText}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
   const pdfExportRef = useRef<HTMLDivElement>(null);
   const shareImageRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSharePopoverOpen, setIsSharePopoverOpen] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
@@ -355,6 +422,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             break;
         case AnalysisMode.AI_DETECTION:
             summary = `My text analysis shows a ${data.aiDetectionResults?.overallScore}% likelihood of being AI-generated, according to the Content Authenticator.`;
+            break;
+        case AnalysisMode.SUMMARIZE:
+            summary = `I just summarized a long document into key points using the Content Authenticator & Summarizer.`;
             break;
         case AnalysisMode.HUMANIZE:
             summary = `I used the Content Authenticator & Humanizer to make my text sound more natural and engaging.`;
@@ -386,6 +456,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             break;
         case AnalysisMode.AI_DETECTION:
             summary = `My text analysis shows a ${data.aiDetectionResults?.overallScore}% likelihood of being AI-generated, according to the Content Authenticator.`;
+            break;
+        case AnalysisMode.SUMMARIZE:
+            summary = `I just summarized a long document into key points using the Content Authenticator & Summarizer.`;
             break;
         case AnalysisMode.HUMANIZE:
             summary = `I used the Content Authenticator & Humanizer to make my text sound more natural and engaging.`;
@@ -421,6 +494,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             fileName = 'plagiarism-card.png';
         } else if (data.mode === AnalysisMode.AI_DETECTION) {
             fileName = 'ai-detection-card.png';
+        } else if (data.mode === AnalysisMode.SUMMARIZE) {
+            fileName = 'summary-card.png';
         } else if (data.mode === AnalysisMode.HUMANIZE) {
             fileName = 'humanization-card.png';
         }
@@ -483,6 +558,12 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             reportContent += `Text: "${segment.text}"\n\n`;
           }
         });
+    } else if (data.mode === AnalysisMode.SUMMARIZE && data.summarizedText) {
+      fileName = 'summary-report.txt';
+      reportContent += `Text Summarization Report\n`;
+      reportContent += `========================\n\n`;
+      reportContent += `--- ORIGINAL TEXT ---\n\n${data.originalText}\n\n`;
+      reportContent += `--- SUMMARIZED TEXT ---\n\n${data.summarizedText}\n`;
     } else if (data.mode === AnalysisMode.HUMANIZE && data.humanizedText) {
       fileName = 'humanization-report.txt';
       reportContent += `Text Humanization Report\n`;
@@ -545,6 +626,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
           fileName = 'plagiarism-report.pdf';
       } else if (data.mode === AnalysisMode.AI_DETECTION) {
           fileName = 'ai-detection-report.pdf';
+      } else if (data.mode === AnalysisMode.SUMMARIZE) {
+          fileName = 'summary-report.pdf';
       } else if (data.mode === AnalysisMode.HUMANIZE) {
           fileName = 'humanization-report.pdf';
       }
@@ -557,12 +640,47 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
     }
   }, [data, isGeneratingPdf]);
 
+  const handleExportDocx = useCallback(async () => {
+    const textToExport = data.mode === AnalysisMode.HUMANIZE ? data.humanizedText : data.summarizedText;
+    const fileName = data.mode === AnalysisMode.HUMANIZE ? 'humanized-text.docx' : 'summary.docx';
+    
+    if (!textToExport || isGeneratingDocx) return;
+
+    setIsGeneratingDocx(true);
+    try {
+        const doc = new Document({
+            sections: [{
+                children: textToExport.split('\n').map(
+                    (text) => new Paragraph({ text })
+                ),
+            }],
+        });
+
+        const blob = await Packer.toBlob(doc);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Failed to generate DOCX:", error);
+    } finally {
+        setIsGeneratingDocx(false);
+    }
+  }, [data, isGeneratingDocx]);
+
+
   const renderResults = () => {
     switch (data.mode) {
       case AnalysisMode.PLAGIARISM:
         return <PlagiarismResultDisplay data={data} />;
       case AnalysisMode.AI_DETECTION:
         return <AiDetectionResultDisplay data={data} />;
+      case AnalysisMode.SUMMARIZE:
+        return <SummarizeResultDisplay data={data} />;
       case AnalysisMode.HUMANIZE:
         return <HumanizeResultDisplay data={data} />;
       default:
@@ -628,6 +746,17 @@ const ResultsView: React.FC<ResultsViewProps> = ({ data, onReset }) => {
             <PDFIcon className="w-5 h-5 mr-2" />
             {isGeneratingPdf ? 'Generating...' : 'Export as PDF'}
           </button>
+          {(data.mode === AnalysisMode.HUMANIZE || data.mode === AnalysisMode.SUMMARIZE) && (
+            <button
+              onClick={handleExportDocx}
+              disabled={isGeneratingDocx}
+              className="flex items-center text-sm bg-slate-700/50 hover:bg-slate-700 text-slate-300 font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait"
+              aria-label="Export as DOCX"
+            >
+              <DocxIcon className="w-5 h-5 mr-2" />
+              {isGeneratingDocx ? 'Generating...' : 'Export as DOCX'}
+            </button>
+          )}
            <button
             onClick={handleDownload}
             className="flex items-center text-sm bg-slate-700/50 hover:bg-slate-700 text-slate-300 font-semibold py-2 px-4 rounded-lg transition-colors"
